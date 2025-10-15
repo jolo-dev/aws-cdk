@@ -7,6 +7,7 @@
   - [HTTP Proxy Integration](#http-proxy)
   - [StepFunctions Integration](#stepfunctions-integration)
   - [SQS Integration](#sqs-integration)
+  - [EventBridge Integration](#eventbridge-integration)
   - [Private Integration](#private-integration)
   - [Request Parameters](#request-parameters)
 - [WebSocket APIs](#websocket-apis)
@@ -213,6 +214,71 @@ new apigwv2.ParameterMapping()
 new apigwv2.ParameterMapping()
   .custom('QueueUrl', queue.queueUrl);
 ```
+
+### EventBridge Integration
+
+EventBridge integrations enable integrating an HTTP API route with Amazon EventBridge.
+This allows the HTTP API to send events directly to an EventBridge event bus using the PutEvents API.
+
+When a client invokes the route configured with an EventBridge integration, the API Gateway service forwards the event to the specified EventBridge event bus and returns the response to the client.
+
+The following code configures an EventBridge integration:
+
+```ts
+import * as events from 'aws-cdk-lib/aws-events';
+import { HttpEventBridgeIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+
+declare const eventBus: events.IEventBus;
+declare const httpApi: apigwv2.HttpApi;
+
+// Integration with a custom event bus
+httpApi.addRoutes({
+  path: '/events',
+  methods: [apigwv2.HttpMethod.POST],
+  integration: new HttpEventBridgeIntegration('EventBridgeIntegration', {
+    eventBus,
+  }),
+});
+
+// Integration with the default event bus
+httpApi.addRoutes({
+  path: '/default-events',
+  methods: [apigwv2.HttpMethod.POST],
+  integration: new HttpEventBridgeIntegration('DefaultEventBridgeIntegration'),
+});
+
+// Custom parameter mapping with additional fields
+httpApi.addRoutes({
+  path: '/custom-events',
+  methods: [apigwv2.HttpMethod.POST],
+  integration: new HttpEventBridgeIntegration('CustomEventBridgeIntegration', {
+    eventBus,
+    parameterMapping: new apigwv2.ParameterMapping()
+      .custom('Detail', '$request.body.detail')
+      .custom('DetailType', '$request.body.detailType')
+      .custom('Source', '$request.body.source')
+      .custom('EventBusName', eventBus.eventBusName)
+      .custom('Resources', '$request.body.resources')
+      .custom('Time', '$request.body.time'),
+  }),
+});
+```
+
+#### EventBridge integration parameter mappings
+
+You can configure custom parameter mappings for the EventBridge integration using the `parameterMapping` property of the `HttpEventBridgeIntegration` object.
+
+The default parameter mapping expects the following fields in the request body:
+- `Detail`: The data included in the event (required)
+- `DetailType`: A string to categorize the events (required)
+- `Source`: The source of the event (required)
+
+Optional EventBridge PutEvents parameters that can be added via custom parameter mapping:
+- `EventBusName`: The name or ARN of the event bus
+- `Resources`: AWS resources identified by ARN
+- `Time`: The timestamp of the event
+
+**Note**: The `Detail` field should be a JSON-encoded string. When sending events via the HTTP API, ensure the detail payload is properly JSON-encoded.
 
 ### Private Integration
 
